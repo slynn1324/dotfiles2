@@ -1,0 +1,67 @@
+#eval "$(starship init zsh)"
+
+# customize the zsh prompt with no dependencies
+precmd () {
+    
+    git rev-parse --is-inside-work-tree &> /dev/null
+    is_git_repo=$?
+
+    if [[ $is_git_repo -eq 0 ]]; then
+
+    	# create the git status characters
+    	git_branch_name=$(git symbolic-ref --short HEAD 2>/dev/null)
+
+    	git_status_out=$(git status --porcelain 2>/dev/null)
+
+    	git_has_unstaged="!"
+    	if [ -z "$(echo "$git_status_out" | grep "^ M")" ]; then 
+    		git_has_unstaged=""
+    	fi
+
+    	git_has_staged="+"
+    	if [ -z "$(echo "$git_status_out" | grep "^M ")" ]; then 
+    		git_has_staged=""
+    	fi
+
+    	git_has_untracked="?"
+    	if [ -z "$(echo "$git_status_out" | grep "^[?][?]")" ]; then
+    		git_has_untracked=""
+    	fi
+
+    	git_has_unpushed="⇡"
+    	if [ -z "$(git log @{push}.. 2>/dev/null)" ]; then
+    		git_has_unpushed=""
+    	fi
+
+    	git_status="$git_has_unstaged$git_has_staged$git_has_untracked$git_has_unpushed"
+    	if [ ! -z $git_status ]; then
+    		git_status="$git_status "
+    	fi
+
+    	## set directory path
+    	# in root of git repo
+    	if [ -d .git ]; then
+    		dir=""
+
+    	# in first subfolder of git repo
+    	elif [ -d ../.git ]; then
+    		dir="$(print -P '/%1~')"
+
+    	# in second subfolder of git repo
+    	elif [ -d ../../.git ]; then
+    		dir="$(print -P '/%2~')"
+
+    	# deeper in git repo 
+    	else
+    		dir="$(print -P '/…/%2~')"
+    	fi
+
+    	# psvar format = ( git_repo_base_path, directory_path, git_branch_name, git_status_chars )
+        psvar=("$(basename `git rev-parse --show-toplevel`)" "$dir" "⑂ $git_branch_name " "$git_status")
+    else
+    	psvar=("" "$(print -P '%3~')")
+    fi
+   
+	PROMPT="%F{green}%m%f: %F{45}%B%1v%b%2v%f %B%F{129}%3v%f%b%B%F{red}%4v%f%b%(?.%F{green}❯%f.%F{red}❯%f) "
+}
+
